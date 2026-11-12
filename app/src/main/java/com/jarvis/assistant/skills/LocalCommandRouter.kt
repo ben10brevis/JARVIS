@@ -21,7 +21,49 @@ class LocalCommandRouter(private val context: Context) {
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
+    /**
+     * Executes up to three short actions from one spoken request.
+     * Examples: "open Instagram and WhatsApp" or "turn on flashlight, then volume up".
+     */
     fun execute(raw: String): AssistantResponse {
+        val original = raw.trim()
+        if (original.isBlank()) return response("I didn't catch that. Please try again.", ResponseStatus.ERROR)
+
+        val parts = original.split(Regex("""(?i)\s*(?:,|\bthen\b|\band then\b|\band\b)\s*"""))
+            .map { it.trim().trim('.', ' ') }
+            .filter { it.isNotBlank() }
+        if (parts.size <= 1) return executeSingle(original)
+
+        val commands = parts.take(3).mapIndexed { index, part ->
+            if (index > 0 && !hasCommandVerb(part) &&
+                parts.first().trim().lowercase(Locale.ROOT).startsWith("open ")) {
+                "open $part"
+            } else part
+        }
+
+        val results = commands.map { executeSingle(it) }
+        val summary = results.mapIndexed { index, result -> "\${index + 1}. \${result.text}" }.joinToString("\n")
+        val omitted = parts.size - commands.size
+        val suffix = if (omitted > 0) "\nI handled the first three commands; $omitted additional command(s) were skipped." else ""
+        val status = if (results.any { it.status == ResponseStatus.ERROR }) ResponseStatus.ERROR else ResponseStatus.SUCCESS
+        return response(summary + suffix, status)
+    }
+
+    private fun hasCommandVerb(part: String): Boolean {
+        val value = part.trim().lowercase(Locale.ROOT)
+        return value.startsWith("open ") || value.startsWith("launch ") ||
+            value.startsWith("turn ") || value.startsWith("set ") ||
+            value.startsWith("increase ") || value.startsWith("decrease ") ||
+            value.startsWith("volume ") || value.startsWith("flashlight ") ||
+            value.startsWith("torch ") || value.startsWith("call ") ||
+            value.startsWith("dial ") || value.startsWith("message ") ||
+            value.startsWith("search ") || value.startsWith("google ") ||
+            value.startsWith("read ") || value.startsWith("enable ") ||
+            value.startsWith("disable ") || value.startsWith("start ") ||
+            value.startsWith("create ") || value.startsWith("brightness ")
+    }
+
+    private fun executeSingle(raw: String): AssistantResponse {
         val text = raw.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return response("I didn't catch that. Please try again.", ResponseStatus.ERROR)
 
