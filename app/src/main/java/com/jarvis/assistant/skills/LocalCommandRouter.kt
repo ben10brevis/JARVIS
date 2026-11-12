@@ -2,6 +2,8 @@ package com.jarvis.assistant.skills
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
@@ -24,6 +26,19 @@ class LocalCommandRouter(private val context: Context) {
         if (text.isBlank()) return response("I didn't catch that. Please try again.", ResponseStatus.ERROR)
 
         return when {
+            Regex("""^(?:call|dial)\\s+\\+?[0-9][0-9 -]{4,18}$""").matches(text) -> {
+                val number = raw.trim().substringAfter(' ').trim()
+                openScreen(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))), "Opening the dialer. Review the number and tap Call to place the call.")
+            }
+            Regex("""^message\\s+\\+?[0-9][0-9 -]{4,18}\\s+.+$""").matches(text) -> {
+                val parts = raw.trim().split(Regex("\\s+"), limit = 3)
+                val number = parts.getOrNull(1).orEmpty()
+                val body = parts.getOrNull(2).orEmpty()
+                openScreen(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(number))).putExtra("sms_body", body), "Opening your messaging app. Review and send the message yourself.")
+            }
+            containsAny(text, "open camera", "camera open", "కెమెరా ఓపెన్") ->
+                openScreen(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), "Opening the camera.")
+
             containsAny(text, "flashlight on", "turn on flashlight", "torch on", "టార్చ్ ఆన్", "లైట్ ఆన్") -> setTorch(true)
             containsAny(text, "flashlight off", "turn off flashlight", "torch off", "టార్చ్ ఆఫ్", "లైట్ ఆఫ్") -> setTorch(false)
 
