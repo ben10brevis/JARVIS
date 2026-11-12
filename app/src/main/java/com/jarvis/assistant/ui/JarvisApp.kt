@@ -87,7 +87,7 @@ fun JarvisApp() {
             status = "LISTENING…"
             speech.listen(
                 onResult = { phrase -> listening = false; handleCommand(phrase) },
-                onError = { message -> listening = false; response = message; status = "VOICE ERROR" }
+                onFailure = { message -> listening = false; response = message; status = "VOICE ERROR" }
             )
         } else {
             response = "Microphone permission is needed for voice commands. You can still use the text command field in a later build."
@@ -123,7 +123,7 @@ fun JarvisApp() {
                             status = "LISTENING…"
                             speech.listen(
                                 onResult = { phrase -> listening = false; handleCommand(phrase) },
-                                onError = { message -> listening = false; response = message; status = "VOICE ERROR" }
+                                onFailure = { message -> listening = false; response = message; status = "VOICE ERROR" }
                             )
                         } else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     },
