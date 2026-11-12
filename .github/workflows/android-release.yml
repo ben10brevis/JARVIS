@@ -11,19 +11,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
       - name: Install Android 17 SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager --install \
-            "platforms;android-37" \
+          sdkmanager --channel=3 --install \
+            "platforms;android-37.0" \
             "build-tools;37.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.6.0'
+
       - name: Decode signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -33,6 +43,7 @@ jobs:
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+
       - name: Build signed release APK
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/jarvis-release.jks
@@ -45,6 +56,7 @@ jobs:
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
       - uses: actions/upload-artifact@v4
         with:
           name: JARVIS-release-apk
