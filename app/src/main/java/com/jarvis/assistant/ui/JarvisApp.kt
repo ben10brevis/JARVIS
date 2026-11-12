@@ -215,7 +215,7 @@ fun JarvisApp() {
                 OutlinedButton(onClick = { showPermissionSetup = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Settings, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("PERMISSION CENTER  ·  ${listOf(micGranted, cameraGranted, writeSettingsGranted, notificationAccessGranted, dndGranted).count { it }}/5 READY")
+                    Text("PERMISSION CENTER  ·  ${listOf(micGranted, cameraGranted, writeSettingsGranted, notificationAccessGranted, dndGranted).count { it } + (permissionRefresh * 0)}/5 READY")
                 }
                 Spacer(Modifier.height(14.dp))
                 Text("QUICK COMMANDS", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.Start))
