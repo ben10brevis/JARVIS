@@ -33,7 +33,7 @@ class LocalCommandRouter(private val context: Context) {
                 openSettings(Intent(Settings.ACTION_SETTINGS), "Opening Settings.")
 
             text.startsWith("search ") -> {
-                val query = raw.substringAfter("search ").trim()
+                val query = raw.trim().substringAfter(' ').trim()
                 val intent = Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, query)
                 openSettings(intent, "Searching the web for $query.")
             }
