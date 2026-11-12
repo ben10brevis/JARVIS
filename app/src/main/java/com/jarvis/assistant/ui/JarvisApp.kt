@@ -2,6 +2,10 @@ package com.jarvis.assistant.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.app.NotificationManager
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +19,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +31,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -58,6 +68,49 @@ fun JarvisApp() {
     var response by remember { mutableStateOf("Hello. I'm JARVIS. Your assistant foundation is ready.") }
     var status by remember { mutableStateOf("READY · TAP TO SPEAK") }
     var ttsReady by remember { mutableStateOf(false) }
+    var showPermissionSetup by remember { mutableStateOf(false) }
+    var permissionRefresh by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    val writeSettingsGranted = Settings.System.canWrite(context)
+    val notificationAccessGranted = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+        ?.contains(context.packageName) == true
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val dndGranted = notificationManager.isNotificationPolicyAccessGranted
+
+    val runtimePermissionsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        val denied = result.filterValues { !it }.keys
+        response = if (denied.isEmpty()) "Microphone and camera permissions granted." else "Some permissions were not granted. You can enable them in Android App Settings."
+        status = if (denied.isEmpty()) "PERMISSIONS READY" else "PERMISSIONS INCOMPLETE"
+        permissionRefresh++
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) permissionRefresh++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("jarvis_setup", 0)
+        if (!prefs.getBoolean("permission_intro_shown", false)) {
+            showPermissionSetup = true
+            prefs.edit().putBoolean("permission_intro_shown", true).apply()
+        }
+    }
+
+    fun openPermissionPage(intent: Intent) {
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            response = "Could not open that permission page. Please use Android Settings > Apps > JARVIS > Permissions."
+            status = "SETTINGS UNAVAILABLE"
+        }
+    }
+
     val tts = remember {
         TextToSpeech(context) { result -> ttsReady = result == TextToSpeech.SUCCESS }
     }
@@ -103,11 +156,15 @@ fun JarvisApp() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text("J.A.R.V.I.S", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-                        Text("PERSONAL AI ASSISTANT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Image(painter = painterResource(com.jarvis.assistant.R.drawable.ic_jarvis_logo), contentDescription = "JARVIS logo", modifier = Modifier.size(48.dp))
+                        Column {
+                            Text("J.A.R.V.I.S", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
+                            Text("PERSONAL AI ASSISTANT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                        }
                     }
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Muted)
+                    Icon(Icons.Default.Settings, contentDescription = "Permission settings", tint = Cyan,
+                        modifier = Modifier.size(26.dp).clickable { showPermissionSetup = true })
                 }
                 Spacer(Modifier.height(38.dp))
                 Text(status, color = Cyan, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
@@ -155,6 +212,12 @@ fun JarvisApp() {
                     Text(response, color = Color(0xFFE4EDF7), fontSize = 14.sp, lineHeight = 21.sp)
                 }
                 Spacer(Modifier.height(18.dp))
+                OutlinedButton(onClick = { showPermissionSetup = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("PERMISSION CENTER  ·  ${listOf(micGranted, cameraGranted, writeSettingsGranted, notificationAccessGranted, dndGranted).count { it }}/5 READY")
+                }
+                Spacer(Modifier.height(14.dp))
                 Text("QUICK COMMANDS", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.Start))
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -185,9 +248,71 @@ fun JarvisApp() {
                     }
                 }
                 Spacer(Modifier.height(22.dp))
-                Text("JARVIS FOUNDATION 0.1.0  ·  ONEPLUS EDITION", color = Muted.copy(alpha = .65f), fontSize = 9.sp, letterSpacing = 1.sp, textAlign = TextAlign.Center)
+                Text("JARVIS  ·  ONEPLUS EDITION", color = Muted.copy(alpha = .65f), fontSize = 9.sp, letterSpacing = 1.sp, textAlign = TextAlign.Center)
+            }
+
+            if (showPermissionSetup) {
+                AlertDialog(
+                    onDismissRequest = { showPermissionSetup = false },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(painter = painterResource(com.jarvis.assistant.R.drawable.ic_jarvis_logo), contentDescription = null, modifier = Modifier.size(38.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text("JARVIS PERMISSIONS", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("Enable only the access you want. Android will show its own system permission screen for each protected feature.", color = Muted, fontSize = 12.sp)
+                            PermissionStatusRow("Microphone · voice commands", micGranted)
+                            PermissionStatusRow("Camera · flashlight control", cameraGranted)
+                            Button(onClick = {
+                                runtimePermissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA))
+                            }, modifier = Modifier.fillMaxWidth()) { Text("REQUEST MICROPHONE + CAMERA") }
+
+                            HorizontalDivider(color = Color.White.copy(alpha = .12f))
+                            PermissionStatusRow("Modify system settings · brightness", writeSettingsGranted)
+                            OutlinedButton(onClick = {
+                                openPermissionPage(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).setData(Uri.parse("package:" + context.packageName)))
+                            }, modifier = Modifier.fillMaxWidth()) { Text("OPEN BRIGHTNESS ACCESS") }
+
+                            HorizontalDivider(color = Color.White.copy(alpha = .12f))
+                            PermissionStatusRow("Notification access · read recent alerts", notificationAccessGranted)
+                            OutlinedButton(onClick = {
+                                openPermissionPage(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            }, modifier = Modifier.fillMaxWidth()) { Text("OPEN NOTIFICATION ACCESS") }
+
+                            HorizontalDivider(color = Color.White.copy(alpha = .12f))
+                            PermissionStatusRow("Do Not Disturb access", dndGranted)
+                            OutlinedButton(onClick = {
+                                openPermissionPage(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+                            }, modifier = Modifier.fillMaxWidth()) { Text("OPEN DND ACCESS") }
+
+                            Text("Internet access is granted automatically by Android. Calls and SMS use the system dialer or messaging app and do not need direct call/SMS permissions. Wake-word background microphone access will be requested only when that feature is implemented.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showPermissionSetup = false }) { Text("DONE") }
+                    },
+                    containerColor = Panel,
+                    titleContentColor = Color.White,
+                    textContentColor = Color.White
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun PermissionStatusRow(label: String, granted: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Color.White, fontSize = 12.sp)
+        }
+        Text(if (granted) "GRANTED" else "NOT GRANTED", color = if (granted) Color(0xFF7CE8B2) else Color(0xFFFFC46B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
