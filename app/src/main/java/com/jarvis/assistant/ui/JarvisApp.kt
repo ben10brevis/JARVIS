@@ -53,6 +53,7 @@ fun JarvisApp() {
     val router = remember { LocalCommandRouter(context) }
     val speech = remember { SpeechController(context) }
     var listening by remember { mutableStateOf(false) }
+    var speechLanguage by remember { mutableStateOf("en-IN") }
     var heardText by remember { mutableStateOf("Say a command or tap the microphone") }
     var response by remember { mutableStateOf("Hello. I'm JARVIS. Your assistant foundation is ready.") }
     var status by remember { mutableStateOf("READY · TAP TO SPEAK") }
@@ -75,8 +76,7 @@ fun JarvisApp() {
         response = result.text
         status = if (result.status.name == "SUCCESS") "ACTION COMPLETED" else "RESPONSE READY"
         if (ttsReady) {
-            val locale = if (command.any { it in '\u0C00'..'\u0C7F' }) Locale("te", "IN") else Locale("en", "IN")
-            tts.language = locale
+            tts.language = Locale.forLanguageTag(speechLanguage)
             tts.speak(result.text, TextToSpeech.QUEUE_FLUSH, null, "jarvis-response")
         }
     }
@@ -86,6 +86,7 @@ fun JarvisApp() {
             listening = true
             status = "LISTENING…"
             speech.listen(
+                languageTag = speechLanguage,
                 onResult = { phrase -> listening = false; handleCommand(phrase) },
                 onFailure = { message -> listening = false; response = message; status = "VOICE ERROR" }
             )
@@ -115,13 +116,19 @@ fun JarvisApp() {
                 Spacer(Modifier.height(18.dp))
                 Text(if (listening) "I'm listening…" else "At your command", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Medium)
                 Text("Hey, Jarvis  ·  Jarvis", color = Muted, fontSize = 13.sp)
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(selected = speechLanguage == "en-IN", onClick = { speechLanguage = "en-IN" }, label = { Text("English") })
+                    FilterChip(selected = speechLanguage == "te-IN", onClick = { speechLanguage = "te-IN" }, label = { Text("తెలుగు") })
+                }
+                Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                             listening = true
                             status = "LISTENING…"
                             speech.listen(
+                                languageTag = speechLanguage,
                                 onResult = { phrase -> listening = false; handleCommand(phrase) },
                                 onFailure = { message -> listening = false; response = message; status = "VOICE ERROR" }
                             )
