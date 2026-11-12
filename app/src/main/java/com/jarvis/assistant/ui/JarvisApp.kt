@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.YouTubeSearchedFor
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -152,7 +151,7 @@ fun JarvisApp() {
                 Text("QUICK COMMANDS", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.Start))
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAction("YouTube", "open youtube", Icons.Default.YouTubeSearchedFor, ::handleCommand, Modifier.weight(1f))
+                    QuickAction("YouTube", "open youtube", Icons.Default.PlayArrow, ::handleCommand, Modifier.weight(1f))
                     QuickAction("Wi-Fi", "wifi", Icons.Default.Wifi, ::handleCommand, Modifier.weight(1f))
                     QuickAction("Settings", "open settings", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
                 }
