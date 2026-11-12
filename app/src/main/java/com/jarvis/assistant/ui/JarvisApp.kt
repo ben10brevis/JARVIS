@@ -166,7 +166,12 @@ fun JarvisApp() {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     QuickAction("Flashlight", "flashlight on", Icons.Default.PlayArrow, ::handleCommand, Modifier.weight(1f))
                     QuickAction("Read alerts", "read notifications", Icons.Default.History, ::handleCommand, Modifier.weight(1f))
-                    QuickAction("Permissions", "enable notification access", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
+                    QuickAction("Notif access", "enable notification access", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    QuickAction("Brightness access", "allow brightness", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
+                    QuickAction("DND access", "allow do not disturb", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(22.dp))
                 GlassCard {
