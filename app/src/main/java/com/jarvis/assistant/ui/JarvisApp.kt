@@ -162,6 +162,12 @@ fun JarvisApp() {
                     QuickAction("Wi-Fi", "wifi", Icons.Default.Wifi, ::handleCommand, Modifier.weight(1f))
                     QuickAction("Settings", "open settings", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
                 }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    QuickAction("Flashlight", "flashlight on", Icons.Default.PlayArrow, ::handleCommand, Modifier.weight(1f))
+                    QuickAction("Read alerts", "read notifications", Icons.Default.History, ::handleCommand, Modifier.weight(1f))
+                    QuickAction("Permissions", "enable notification access", Icons.Default.Settings, ::handleCommand, Modifier.weight(1f))
+                }
                 Spacer(Modifier.height(22.dp))
                 GlassCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
