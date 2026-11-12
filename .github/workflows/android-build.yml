@@ -30,9 +30,11 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v4
+
       - name: Install Android 17 SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null
           sdkmanager --install \
             "platforms;android-37" \
             "build-tools;37.0.0"
