@@ -26,11 +26,11 @@ class LocalCommandRouter(private val context: Context) {
         if (text.isBlank()) return response("I didn't catch that. Please try again.", ResponseStatus.ERROR)
 
         return when {
-            Regex("""^(?:call|dial)\s+\\+?[0-9][0-9 -]{4,18}$""").matches(text) -> {
+            Regex("""^(?:call|dial)\s+\+?[0-9][0-9 -]{4,18}$""").matches(text) -> {
                 val number = raw.trim().substringAfter(' ').trim()
                 openScreen(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))), "Opening the dialer. Review the number and tap Call to place the call.")
             }
-            Regex("""^message\s+\\+?[0-9][0-9 -]{4,18}\s+.+$""").matches(text) -> {
+            Regex("""^message\s+\+?[0-9][0-9 -]{4,18}\s+.+$""").matches(text) -> {
                 val parts = raw.trim().split(Regex("\\s+"), limit = 3)
                 val number = parts.getOrNull(1).orEmpty()
                 val body = parts.getOrNull(2).orEmpty()
