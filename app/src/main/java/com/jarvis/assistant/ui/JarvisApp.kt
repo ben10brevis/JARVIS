@@ -2,6 +2,7 @@ package com.jarvis.assistant.ui
 
 import android.Manifest
 import android.content.Context
+import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.app.NotificationManager
 import android.content.Intent
@@ -72,17 +73,28 @@ fun JarvisApp() {
     var showPermissionSetup by remember { mutableStateOf(false) }
     var permissionRefresh by remember { mutableIntStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-    val cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-    val writeSettingsGranted = Settings.System.canWrite(context)
-    val notificationAccessGranted = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-        ?.contains(context.packageName) == true
-    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    val dndGranted = notificationManager.isNotificationPolicyAccessGranted
+    // Re-read special/runtime access whenever returning from Android Settings.
+    val permissionStates = remember(permissionRefresh) {
+        val mic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val write = Settings.System.canWrite(context)
+        val enabledListeners = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+            .orEmpty().split(':').mapNotNull { ComponentName.unflattenFromString(it) }
+        val listener = enabledListeners.any {
+            it.packageName == context.packageName &&
+                it.className == "com.jarvis.assistant.notifications.JarvisNotificationListener"
+        }
+        val dndManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val dnd = dndManager.isNotificationPolicyAccessGranted
+        listOf(mic, write, listener, dnd)
+    }
+    val micGranted = permissionStates[0]
+    val writeSettingsGranted = permissionStates[1]
+    val notificationAccessGranted = permissionStates[2]
+    val dndGranted = permissionStates[3]
 
     val runtimePermissionsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         val denied = result.filterValues { !it }.keys
-        response = if (denied.isEmpty()) "Microphone and camera permissions granted." else "Some permissions were not granted. You can enable them in Android App Settings."
+        response = if (denied.isEmpty()) "Microphone permission granted." else "Some permissions were not granted. You can enable them in Android App Settings."
         status = if (denied.isEmpty()) "PERMISSIONS READY" else "PERMISSIONS INCOMPLETE"
         permissionRefresh++
     }
@@ -216,7 +228,7 @@ fun JarvisApp() {
                 OutlinedButton(onClick = { showPermissionSetup = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Settings, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("PERMISSION CENTER  ·  ${listOf(micGranted, cameraGranted, writeSettingsGranted, notificationAccessGranted, dndGranted).count { it } + (permissionRefresh * 0)}/5 READY")
+                    Text("PERMISSION CENTER  ·  ${listOf(micGranted, writeSettingsGranted, notificationAccessGranted, dndGranted).count { it }}/4 READY")
                 }
                 Spacer(Modifier.height(14.dp))
                 Text("QUICK COMMANDS", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.Start))
@@ -269,10 +281,9 @@ fun JarvisApp() {
                         ) {
                             Text("Enable only the access you want. Android will show its own system permission screen for each protected feature.", color = Muted, fontSize = 12.sp)
                             PermissionStatusRow("Microphone · voice commands", micGranted)
-                            PermissionStatusRow("Camera · flashlight control", cameraGranted)
                             Button(onClick = {
-                                runtimePermissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA))
-                            }, modifier = Modifier.fillMaxWidth()) { Text("REQUEST MICROPHONE + CAMERA") }
+                                runtimePermissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+                            }, modifier = Modifier.fillMaxWidth()) { Text("REQUEST MICROPHONE") }
 
                             HorizontalDivider(color = Color.White.copy(alpha = .12f))
                             PermissionStatusRow("Modify system settings · brightness", writeSettingsGranted)
