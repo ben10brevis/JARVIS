@@ -33,11 +33,17 @@ jobs:
       - name: Set up Android SDK tools
         uses: android-actions/setup-android@v4
 
-      - name: Install Android 17 SDK
+      - name: Install Android 17 Canary SDK
         run: |
-          sdkmanager --install \
-            "platforms;android-37" \
+          sdkmanager --channel=3 --install \
+            "platforms;android-37.0" \
             "build-tools;37.0.0"
+          # API 37 is currently published as android-37.0. Some Android
+          # Gradle Plugin versions still look for the legacy android-37 path.
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+          ls -la "$ANDROID_HOME/platforms"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
